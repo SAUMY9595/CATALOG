@@ -1,0 +1,77 @@
+#include <iostream>
+#include <fstream>
+#include <map>
+#include <string>
+#include <cmath>
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
+using namespace std;
+
+// Function to decode value based on its base
+long long decodeBase(const string& value, int base) {
+    long long result = 0;
+    int power = 0;
+    for (int i = value.size() - 1; i >= 0; i--) {
+        char digit = value[i];
+        int num;
+        if (isdigit(digit)) {
+            num = digit - '0';
+        } else {
+            num = digit - 'a' + 10;
+        }
+        result += num * pow(base, power++);
+    }
+    return result;
+}
+
+// Function for Lagrange interpolation to find c
+double lagrangeInterpolation(map<int, long long>& points, int k) {
+    double secret = 0.0;
+    for (auto& [xi, yi] : points) {
+        double term = yi;
+        for (auto& [xj, _] : points) {
+            if (xi != xj) {
+                term *= double(0 - xj) / (xi - xj);
+            }
+        }
+        secret += term;
+    }
+    return secret;
+}
+
+int main() {
+    // Open and read the JSON file
+    ifstream file("input.json");
+    if (!file.is_open()) {
+        cerr << "Error opening file!" << endl;
+        return 1;
+    }
+
+    json input_json;
+    file >> input_json;
+
+    int n = input_json["keys"]["n"];
+    int k = input_json["keys"]["k"];
+
+    map<int, long long> points;
+
+    // Parse the roots and decode the values
+    for (auto it = input_json.begin(); it != input_json.end(); ++it) {
+        if (it.key() == "keys") continue; // Skip the "keys" object
+
+        int x = stoi(it.key());
+        int base = stoi(it.value()["base"].get<string>());
+        string value = it.value()["value"].get<string>();
+
+        long long y = decodeBase(value, base);
+        points[x] = y; // Add the decoded (x, y) pair
+    }
+
+    // Apply Lagrange interpolation to find the constant term c
+    double constantTerm = lagrangeInterpolation(points, k);
+
+    cout << "The constant term (secret c) is: " << constantTerm << endl;
+
+    return 0;
+}
